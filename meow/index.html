@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Day</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <style>
+        /* 1. THE HEART CURSOR */
+        * {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="%237b1fa2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') 16 16, auto !important;
+        }
+
+        body {
+            margin: 0; padding: 0; font-family: 'Arial', sans-serif;
+            background: linear-gradient(-45deg, #a18cd1, #fbc2eb, #deaaff, #ff8da1);
+            background-size: 400% 400%;
+            animation: gradientBG 12s ease infinite;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; text-align: center; position: relative;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* TRAIL HEARTS STYLE */
+        .trail-heart {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            font-size: 15px;
+            animation: trailAnim 1s ease-out forwards;
+        }
+
+        @keyframes trailAnim {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(0.5); opacity: 0; }
+        }
+
+        /* FLOATING BACKGROUND HEARTS */
+        .heart-bg {
+            position: absolute; color: rgba(255, 255, 255, 0.7);
+            font-size: 20px; user-select: none; z-index: 0; bottom: -50px;
+            pointer-events: none; animation: floatUp 6s linear forwards;
+        }
+
+        @keyframes floatUp {
+            to { transform: translateY(-115vh) rotate(360deg); opacity: 0; }
+        }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3e5f5; z-index: 9999; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        #overlay h2 { color: #7b1fa2; font-style: italic; margin-top: 20px; }
+        .heart-icon-big { font-size: 100px; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shakeEffect {
+            0% { transform: translate(2px, 2px); }
+            25% { transform: translate(-2px, -3px); }
+            50% { transform: translate(3px, 1px); }
+            75% { transform: translate(-1px, 2px); }
+            100% { transform: translate(2px, -1px); }
+        }
+        .apply-shake { animation: shakeEffect 0.2s ease-in-out; }
+
+        .container { z-index: 1; position: relative; }
+        #imageDisplay { height: 250px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 15px 35px rgba(123, 31, 162, 0.3); }
+        h1 { color: #4a148c; font-style: italic; font-size: 2.5rem; margin: 10px; text-shadow: 2px 2px 5px rgba(255,255,255,0.9); }
+        .btn-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; min-height: 200px; }
+        
+        #yesButton { 
+            background-color: #22c55e; color: white; border: none; 
+            padding: 15px 30px; font-size: 20px; font-weight: bold; 
+            border-radius: 12px; transition: transform 0.1s; 
+            box-shadow: 0 4px 15px rgba(123, 31, 162, 0.4); z-index: 5; 
+        }
+        
+        #noButton { 
+            background-color: #ef4444; color: white; border: none; 
+            padding: 15px 30px; font-size: 20px; font-weight: bold; 
+            border-radius: 12px; position: relative; 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); z-index: 10; 
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay" onclick="unlockEverything()">
+        <div class="heart-icon-big">💜</div>
+        <h2>Click to open your surprise!</h2>
+    </div>
+
+    <div class="container">
+        <div id="shakeContent">
+            <img id="imageDisplay" src="./images/image1.gif" alt="Kitten">
+            <h1 id="question">YOU BE MY VALENTINE ;D?</h1>
+        </div>
+        
+        <div class="btn-container">
+            <button id="yesButton">Yes</button>
+            <button id="noButton">No</button>
+        </div>
+    </div>
+
+    <script>
+        const yesButton = document.getElementById('yesButton');
+        const noButton = document.getElementById('noButton');
+        const imageDisplay = document.getElementById('imageDisplay');
+        const question = document.getElementById('question');
+        const overlay = document.getElementById('overlay');
+        const shakeContent = document.getElementById('shakeContent');
+
+        const song = new Audio('love.mp3');
+        song.loop = true;
+
+        let heartInterval;
+        let spawnRate = 500;
+
+        // HEART TRAIL LOGIC
+        document.addEventListener('mousemove', (e) => {
+            if (overlay.style.display === 'none') {
+                const trail = document.createElement('div');
+                trail.classList.add('trail-heart');
+                trail.innerHTML = Math.random() > 0.5 ? '💜' : '💖';
+                trail.style.left = e.clientX + 'px';
+                trail.style.top = e.clientY + 'px';
+                document.body.appendChild(trail);
+                setTimeout(() => trail.remove(), 1000);
+            }
+        });
+
+        function createHearts(amount = 1) {
+            for (let i = 0; i < amount; i++) {
+                const heart = document.createElement('div');
+                heart.classList.add('heart-bg');
+                heart.innerHTML = '🤍';
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                heart.style.opacity = Math.random() * 0.6 + 0.4;
+                heart.style.fontSize = Math.random() * 20 + 15 + 'px';
+                document.body.appendChild(heart);
+                setTimeout(() => heart.remove(), 7000);
+            }
+        }
+
+        function unlockEverything() {
+            song.play();
+            overlay.style.display = 'none';
+            heartInterval = setInterval(() => createHearts(1), spawnRate);
+        }
+
+        let count = 0;
+        let yesScale = 1;
+        let cooldown = false;
+
+        const images = ['./images/image1.gif', './images/image2.gif', './images/image3.gif', './images/image4.gif', './images/image5.gif', './images/image6.gif', './images/image7.gif'];
+        const messages = ["Nu", "MEANIE HELLO?", "EVEN AFTER I THOUGHT YOU ENGISH?", "whay you do dis me >;c", "FOR KINDER BUENO DATE >;C?", "HAHA NU CHOICE NOW >;D"];
+
+        function handleInteraction() {
+            if (cooldown) return;
+            cooldown = true;
+
+            clearInterval(heartInterval);
+            spawnRate = Math.max(40, spawnRate - 90);
+            heartInterval = setInterval(() => createHearts(1), spawnRate);
+            createHearts(6);
+
+            shakeContent.classList.remove('apply-shake');
+            void shakeContent.offsetWidth; 
+            shakeContent.classList.add('apply-shake');
+
+            count++;
+            if (count < messages.length) {
+                noButton.innerHTML = messages[count];
+                imageDisplay.src = images[count];
+            } else {
+                noButton.innerHTML = "HAHAHA I BOKE THE BUTTON NOW YOU HAV TO CLICK YES >;D";
+            }
+
+            noButton.style.position = 'fixed';
+            const x = Math.random() * (window.innerWidth - noButton.offsetWidth - 40) + 20;
+            const y = Math.random() * (window.innerHeight - noButton.offsetHeight - 40) + 20;
+            noButton.style.left = x + 'px';
+            noButton.style.top = y + 'px';
+
+            yesScale += 0.45;
+            yesButton.style.transform = `scale(${yesScale})`;
+
+            setTimeout(() => { cooldown = false; }, 200);
+        }
+
+        noButton.addEventListener('mouseenter', handleInteraction);
+        noButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleInteraction();
+        });
+
+        yesButton.addEventListener('click', () => {
+            clearInterval(heartInterval);
+            setInterval(() => createHearts(5), 40); 
+            
+            imageDisplay.src = images[images.length - 1]; 
+            question.innerHTML = "YAYAYAYAY! ❤️<br><small>SOON WE BE MARRIED AND THEN I ASK YOU OUT ON VALENTINES IN EVEN MORE CRAZY WAYS GEHEHEH I BE THE BESTEST HUSBAND FOR YOU TAAKE YOU BE THE HAPPESHT WIFEY EVERRRR, EVERYDAY OF OUR MARRIAGE SHOULD BE LIKE VALENTINES AND EVEN BETTER XVX, YOU'VE BEEN THE BESTEST THING THAT EVER HAPPENED TO ME AYESHA, THANKS SO SO SO MUCH, I LOVE YOU IN EVERY WAY YOU COULD EVER THINK OF XVX<3</small>";
+            yesButton.style.display = 'none';
+            noButton.style.display = 'none';
+            confetti({ 
+                particleCount: 250, 
+                spread: 120, 
+                origin: { y: 0.6 },
+                colors: ['#7b1fa2', '#ff69b4', '#ffffff']
+            });
+        });
+    </script>
+</body>
+</html>
